@@ -5,6 +5,8 @@ import java.lang.Math;
 public class LocalAligner extends Aligner implements AlignerInterface{
     private int alignmentScore;
     private int indelPenalty;
+    private int matchScore;
+    private int mismatchPenalty;
     private int[][] outputMatrix;
     private int[][] backtrack;
     private ArrayList<String> firstList;
@@ -21,11 +23,18 @@ public class LocalAligner extends Aligner implements AlignerInterface{
         super.readScoringMatrix();
     }
 
+    public LocalAligner(String a, String b, int indelPenalty, int mismatchPenalty, int matchScore){
+        super(a, b);
+        this.indelPenalty = indelPenalty;
+        this.mismatchPenalty = mismatchPenalty;
+        this.matchScore = matchScore;
+    }
+
     public int getAlignmentScore(){
         return this.alignmentScore;
     }
 
-    public void align(){
+    public void alignPeptides(){
         int x = firstString.length()+1;
         int y = secondString.length()+1;
         int maxScore = -9999999;
@@ -55,6 +64,56 @@ public class LocalAligner extends Aligner implements AlignerInterface{
                     backtrack[i][j] = 1;
                 }
                 else if( outputMatrix[i][j] == outputMatrix[i-1][j-1] + diagonal){
+                    backtrack[i][j] = 2;
+                }
+                else if( outputMatrix[i][j] == outputMatrix[i][j-1] - indelPenalty){
+                    backtrack[i][j] = 3;
+                }
+                else if( outputMatrix[i][j] == outputMatrix[i-1][j] - indelPenalty){
+                    backtrack[i][j] = 4;
+                }
+
+            }
+        }
+        this.alignmentScore = outputMatrix[maxI][maxJ];
+        this.memoization(maxI, maxJ);
+    }
+
+    public void alignSequences(){
+        int maxScore = -999999;
+        int maxI = 0;
+        int maxJ = 0;
+
+        for( int i = 0; i < outputMatrix.length; i++){
+            outputMatrix[i][0] = 0;
+        }
+
+        for( int j = 0; j < outputMatrix[0].length; j++){
+            outputMatrix[0][j] = 0;
+        }
+
+        for( int i = 1; i < outputMatrix.length; i++){
+            for( int j = 1; j < outputMatrix[i].length; j++){
+                if( Character.toString(firstString.charAt(i-1)) == Character.toString(secondString.charAt(j-1))){
+                    outputMatrix[i][j] = Math.max(outputMatrix[i-1][j-1] + this.matchScore,
+                    Math.max(outputMatrix[i-1][j] - indelPenalty, outputMatrix[i][j-1] - indelPenalty));
+                }
+                else{
+                    outputMatrix[i][j] = Math.max(outputMatrix[i-1][j-1] - this.mismatchPenalty, 
+                    Math.max(outputMatrix[i-1][j] - indelPenalty, outputMatrix[i][j-1] - indelPenalty));
+                }
+
+                if(outputMatrix[i][j] > maxScore){
+                    maxScore = outputMatrix[i][j];
+                    maxI = i;
+                    maxJ = j;
+                }
+
+                if( outputMatrix[i][j] == 0 ){
+                    backtrack[i][j] = 1;
+                }
+                else if((outputMatrix[i][j] == outputMatrix[i-1][j-1] + this.matchScore) || 
+                (outputMatrix[i][j] == outputMatrix[i-1][j-1] + this.mismatchPenalty)){
                     backtrack[i][j] = 2;
                 }
                 else if( outputMatrix[i][j] == outputMatrix[i][j-1] - indelPenalty){

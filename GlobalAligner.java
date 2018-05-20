@@ -35,9 +35,7 @@ public class GlobalAligner extends Aligner implements AlignerInterface{
     }
     
 
-    public void align(){
-        int x = firstString.length()+1;
-        int y = secondString.length()+1;
+    public void alignPeptides(){
         
         int counter = 0;
         for(int i = 0; i < outputMatrix.length; i++){
@@ -74,7 +72,46 @@ public class GlobalAligner extends Aligner implements AlignerInterface{
     }
 
     public void alignSequences(){
-        
+        int counter = 0;
+        for( int i = 0; i < outputMatrix.length; i++){
+            outputMatrix[i][0] = counter * indelPenalty;
+            backtrack[i][0] = 3;
+            counter--;
+        }
+
+        counter = 0;
+        for( int j = 0; j < outputMatrix[0].length; j++){
+            outputMatrix[0][j] = counter * indelPenalty;
+            backtrack[0][j] = 2;
+            counter--;
+        }
+
+        for( int i = 1; i < outputMatrix.length; i++){
+            for(int j = 1; j < outputMatrix[i].length; j++){
+                if( firstString.charAt(i-1) == secondString.charAt(j-1)){
+                    outputMatrix[i][j] = Math.max(outputMatrix[i-1][j-1] + this.matchScore,
+                    Math.max(outputMatrix[i-1][j] - indelPenalty, outputMatrix[i][j-1] - indelPenalty));
+                }
+                else{
+                    outputMatrix[i][j] = Math.max(outputMatrix[i-1][j-1] - mismatchPenalty,
+                    Math.max(outputMatrix[i-1][j] - indelPenalty, outputMatrix[i][j-1] - indelPenalty));
+                }
+                
+                if((outputMatrix[i][j] == outputMatrix[i-1][j-1] + this.matchScore) || 
+                (outputMatrix[i][j] == outputMatrix[i-1][j-1] + this.mismatchPenalty)){
+                    backtrack[i][j] = 1;
+                }
+                else if( outputMatrix[i][j] == outputMatrix[i][j-1] - indelPenalty){
+                    backtrack[i][j] = 2;
+                }
+                else if( outputMatrix[i][j] == outputMatrix[i-1][j] - indelPenalty){
+                    backtrack[i][j] = 3;
+                }
+
+            }
+        }
+        this.alignmentScore = outputMatrix[firstString.length()][secondString.length()];
+        this.memoization(firstString.length(), secondString.length());
     }
 
     public void memoization(int i, int j){
